@@ -229,12 +229,13 @@ module ResqueScheduler
   # Given an encoded item, remove it from the delayed_queue
   #
   # This method is potentially very expensive since it needs to scan
-  # through the delayed queue for every timestamp.
+  # through the delayed queue for every timestamp, but at least it
+  # doesn't kill Redis by calling redis.keys.
   def remove_delayed(klass, *args)
     destroyed = 0
     search = encode(job_to_hash(klass, args))
-    Array(redis.keys("delayed:*")).each do |key|
-      destroyed += redis.lrem key, 0, search
+    Array(redis.zrange(:delayed_queue_schedule, 0, -1)).each do |timestamp|
+      destroyed += redis.lrem "delayed:#{timestamp}", 0, search
     end
     destroyed
   end
@@ -271,6 +272,9 @@ module ResqueScheduler
 
     def clean_up_timestamp(key, timestamp)
       # If the list is empty, remove it.
+
+      # Use a watch here to ensure nobody adds jobs to this delayed
+      # queue while we're removing it.
       redis.watch key
       if 0 == redis.llen(key).to_i
         redis.multi do
@@ -281,6 +285,7 @@ module ResqueScheduler
         redis.unwatch
       end
     end
+    
     def validate_job!(klass)
       if klass.to_s.empty?
         raise Resque::NoClassError.new("Jobs must be given a class.")
