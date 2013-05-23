@@ -292,7 +292,7 @@ module Resque
       end
 
       def log!(msg)
-        puts "#{Time.now.strftime("%Y-%m-%d %H:%M:%S")} #{msg}" unless mute
+        Resque.logger.info {"#{Time.now.strftime("%Y-%m-%d %H:%M:%S")} #{msg}"} unless mute
       end
 
       def log(msg)
