@@ -1,3 +1,4 @@
+require 'logger'
 require 'rufus/scheduler'
 require 'thwait'
 
@@ -17,6 +18,8 @@ module Resque
 
       # If set, will try to update the schulde in the loop
       attr_accessor :dynamic
+
+      attr_writer :logger
 
       # Amount of time in seconds to sleep between polls of the delayed
       # queue.  Defaults to 5
@@ -292,7 +295,7 @@ module Resque
       end
 
       def log!(msg)
-        puts "#{Time.now.strftime("%Y-%m-%d %H:%M:%S")} #{msg}" unless mute
+        logger.info {"#{Time.now.strftime("%Y-%m-%d %H:%M:%S")} #{msg}"} unless mute
       end
 
       def log(msg)
@@ -303,6 +306,10 @@ module Resque
       def procline(string)
         log! string
         $0 = "resque-scheduler-#{ResqueScheduler::VERSION}: #{string}"
+      end
+
+      def logger
+        @logger ||= Logger.new(STDOUT)
       end
 
     end
